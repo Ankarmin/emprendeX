@@ -10,6 +10,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { SKIP_ALL_THROTTLERS } from '../common/throttling/throttler.constants';
+import { GetReportsDto } from './dto/get-reports.dto';
 import { ReportsService } from './reports.service';
 
 @ApiTags('Reportes')
@@ -28,6 +29,30 @@ export class ReportsController {
   @Get('overview')
   getOverview(@CurrentUser() currentUser: AuthenticatedUser) {
     return this.reportsService.getOverview(currentUser.id);
+  }
+
+  @ApiOperation({
+    summary: 'Reportes del negocio',
+    description:
+      'Devuelve datos agregados por pestaña en un rango de fechas. ' +
+      'Pestañas: resumen, inventario, ventas, clientes, financiero, todos.',
+  })
+  @ApiResponse({ status: 200, description: 'Datos de la pestaña solicitada.' })
+  @Get()
+  getReports(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Query() query: GetReportsDto,
+  ) {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+
+    return this.reportsService.getBusinessReports(currentUser.id, {
+      tab: query.tab ?? 'resumen',
+      fechaInicio: query.fechaInicio ?? firstDay.toISOString().slice(0, 10),
+      fechaFin: query.fechaFin ?? lastDay.toISOString().slice(0, 10),
+      stockBajoUmbral: query.stockBajoUmbral ?? 5,
+    });
   }
 
   @ApiOperation({
