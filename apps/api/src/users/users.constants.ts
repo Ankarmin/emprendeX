@@ -56,6 +56,11 @@ export const MODULE_SEEDS: Array<{
   },
 ];
 
+export const PREMIUM_MODULE_IDS: Array<(typeof AVAILABLE_MODULE_IDS)[number]> =
+  MODULE_SEEDS.filter((module) => module.moduleType === ModuleType.Premium).map(
+    (module) => module.code,
+  );
+
 export const DEFAULT_ENABLED_MODULE_IDS: Array<
   (typeof AVAILABLE_MODULE_IDS)[number]
 > = MODULE_SEEDS.filter((module) => module.moduleType === ModuleType.Basic).map(

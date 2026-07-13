@@ -27,6 +27,7 @@ import {
 } from './public-catalog/public-catalog.config';
 import { ReportsModule } from './reports/reports.module';
 import { SalesModule } from './sales/sales.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -68,6 +69,7 @@ import { UsersModule } from './users/users.module';
     CalendarModule,
     OnboardingModule,
     HealthModule,
+    SubscriptionsModule,
   ],
   controllers: [],
   providers: [

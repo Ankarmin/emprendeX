@@ -33,6 +33,7 @@ import { PublicUser } from './types/public-user.type';
 import {
   AVAILABLE_MODULE_IDS,
   DEFAULT_ENABLED_MODULE_IDS,
+  PREMIUM_MODULE_IDS,
 } from './users.constants';
 
 type AuthUserRecord = {
@@ -287,6 +288,26 @@ export class UsersService {
     });
   }
 
+  async enableAllModulesForUser(
+    userId: string,
+  ): Promise<UserSessionState | null> {
+    return this.rlsContextService.runAsUser(userId, async (manager) => {
+      const business = await this.findPrimaryBusinessByUserId(userId, manager);
+
+      if (!business) {
+        return null;
+      }
+
+      await this.syncBusinessModulesForBusiness(
+        business.businessId,
+        [...AVAILABLE_MODULE_IDS],
+        manager,
+      );
+
+      return this.loadSessionState(userId, manager);
+    });
+  }
+
   async findPrimaryBusinessByUserId(
     userId: string,
     manager?: EntityManager,
@@ -351,6 +372,10 @@ export class UsersService {
       subscriptionsRepository,
     );
 
+    const resolvedEnabledModuleIds = activeSubscription?.isPremium
+      ? Array.from(new Set([...enabledModuleIds, ...PREMIUM_MODULE_IDS]))
+      : enabledModuleIds;
+
     return {
       id: user.userId,
       firstNames: user.firstNames,
@@ -359,7 +384,7 @@ export class UsersService {
       email: user.email,
       phone: user.phone,
       status: UserStatus.Active,
-      enabledModuleIds,
+      enabledModuleIds: resolvedEnabledModuleIds,
       activeSubscription,
       businessProfile: {
         id: business?.businessId ?? null,
