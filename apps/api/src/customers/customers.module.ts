@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OrderEntity } from '../orders/entities/order.entity';
+import { PaymentEntity } from '../payments/entities/payment.entity';
 import { QuotationEntity } from '../quotations/entities/quotation.entity';
+import { QuotationDetailEntity } from '../quotations/entities/quotation-detail.entity';
 import { UsersModule } from '../users/users.module';
 import { Customer } from './entities/customer.entity';
 import { CustomersController } from './customers.controller';
@@ -9,7 +11,13 @@ import { CustomersService } from './customers.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Customer, QuotationEntity, OrderEntity]),
+    TypeOrmModule.forFeature([
+      Customer,
+      QuotationEntity,
+      QuotationDetailEntity,
+      OrderEntity,
+      PaymentEntity,
+    ]),
     UsersModule,
   ],
   controllers: [CustomersController],
