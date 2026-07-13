@@ -54,6 +54,23 @@ export class CustomersController {
     return this.customersService.findOne(currentUser.id, customerId);
   }
 
+  @ApiOperation({
+    summary: 'Historial comercial del cliente',
+    description:
+      'Devuelve KPIs y pedidos con line items, saldos y fechas de entrega.',
+  })
+  @ApiResponse({ status: 200, description: 'Historial comercial.' })
+  @Get(':customerId/historial-comercial')
+  getHistorialComercial(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('customerId', new ParseUUIDPipe()) customerId: string,
+  ) {
+    return this.customersService.getHistorialComercial(
+      currentUser.id,
+      customerId,
+    );
+  }
+
   @ApiOperation({ summary: 'Crear cliente' })
   @ApiResponse({ status: 201, description: 'Cliente creado.' })
   @Post()

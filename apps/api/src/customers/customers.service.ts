@@ -13,6 +13,7 @@ import { Customer } from './entities/customer.entity';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { QuotationEntity } from '../quotations/entities/quotation.entity';
+import { OrderEntity } from '../orders/entities/order.entity';
 
 @Injectable()
 export class CustomersService {
@@ -88,6 +89,91 @@ export class CustomersService {
       return {
         ...this.mapCustomerWithDni(customer, operations.length),
         operations,
+      };
+    });
+  }
+
+  async getHistorialComercial(userId: string, customerId: string) {
+    return this.rlsContextService.runAsUser(userId, async (manager) => {
+      const business = await this.getBusinessOrThrow(userId, manager);
+      const customer = await manager.getRepository(Customer).findOne({
+        where: { customerId, businessId: business.businessId },
+      });
+      if (!customer) {
+        throw new NotFoundException('Cliente no encontrado');
+      }
+
+      const orders = await manager.getRepository(OrderEntity).find({
+        where: { businessId: business.businessId },
+        relations: {
+          quotation: {
+            customer: true,
+            quotationDetails: { item: true },
+          },
+          payment: { paymentDetails: true },
+        },
+        order: { createdAt: 'DESC' },
+      });
+
+      const customerOrders = orders.filter(
+        (order) => order.quotation.customerId === customerId,
+      );
+
+      const totalOperaciones = customerOrders.length;
+      const totalVendido = customerOrders.reduce(
+        (sum, order) => sum + Number(order.quotation.total),
+        0,
+      );
+      const totalPagado = customerOrders.reduce((sum, order) => {
+        if (!order.payment) return sum;
+        return (
+          sum +
+          order.payment.paymentDetails.reduce(
+            (ds, detail) => ds + Number(detail.subtotal),
+            0,
+          )
+        );
+      }, 0);
+      const saldoPendiente = Math.max(totalVendido - totalPagado, 0);
+
+      const pedidos = customerOrders.map((order) => {
+        const orderTotal = Number(order.quotation.total);
+        const paidTotal = order.payment
+          ? order.payment.paymentDetails.reduce(
+              (s, d) => s + Number(d.subtotal),
+              0,
+            )
+          : 0;
+
+        return {
+          id: order.orderId,
+          referenceCode: order.referenceCode,
+          status: order.status,
+          total: order.quotation.total,
+          balance: String(Math.max(orderTotal - paidTotal, 0)),
+          deliveryDate: order.quotation.deliveryDate.toISOString(),
+          createdAt: order.createdAt.toISOString(),
+          itemsCount: order.quotation.quotationDetails.length,
+          items: order.quotation.quotationDetails.map((detail) => ({
+            name: detail.item.name,
+            kind: detail.item.itemClass,
+            quantity: detail.quantity,
+            unitPrice: detail.unitPrice,
+            price: String(
+              Number(detail.unitPrice) * detail.quantity -
+                Number(detail.discount),
+            ),
+          })),
+        };
+      });
+
+      return {
+        kpis: {
+          totalVendido: totalVendido.toFixed(2),
+          totalOperaciones,
+          saldoPendiente: saldoPendiente.toFixed(2),
+        },
+        pedidos,
       };
     });
   }
