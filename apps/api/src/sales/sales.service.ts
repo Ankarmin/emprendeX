@@ -216,6 +216,106 @@ export class SalesService {
     });
   }
 
+  async updateQuotation(
+    userId: string,
+    quotationId: string,
+    dto: CreateQuotationDto,
+  ) {
+    return this.rlsContextService.runAsUser(userId, async (manager) => {
+      const business = await this.getBusinessOrThrow(userId, manager);
+      const quotationsRepository = manager.getRepository(QuotationEntity);
+      const quotationDetailsRepository = manager.getRepository(
+        QuotationDetailEntity,
+      );
+      const itemsRepository = manager.getRepository(ItemEntity);
+
+      const quotation = await quotationsRepository.findOne({
+        where: { quotationId, businessId: business.businessId },
+        relations: { order: true, quotationDetails: true },
+      });
+
+      if (!quotation) {
+        throw new NotFoundException('Cotización no encontrada');
+      }
+
+      if (quotation.order) {
+        throw new BadRequestException(
+          'No se puede modificar una cotización que ya fue aprobada',
+        );
+      }
+
+      const itemIds = dto.details.map((detail) => detail.itemId);
+      const uniqueItemIds = Array.from(new Set(itemIds));
+      if (uniqueItemIds.length !== itemIds.length) {
+        throw new BadRequestException(
+          'No se permiten items repetidos en la cotización',
+        );
+      }
+
+      const items = await itemsRepository.find({
+        where: { businessId: business.businessId, itemId: In(itemIds) },
+      });
+      if (items.length !== dto.details.length) {
+        throw new BadRequestException(
+          'Uno o más items no existen en el negocio',
+        );
+      }
+
+      const itemMap = new Map(items.map((item) => [item.itemId, item]));
+      const total = dto.details.reduce((sum, detail) => {
+        const unitPrice = Number(detail.unitPrice);
+        const discount = Number(detail.discount ?? '0.00');
+        return sum + detail.quantity * unitPrice - discount;
+      }, 0);
+
+      quotation.description = dto.description?.trim() || null;
+      quotation.deliveryDate = new Date(dto.deliveryDate);
+      quotation.deliveryMethod = dto.deliveryMethod;
+      quotation.total = total.toFixed(2);
+      await quotationsRepository.save(quotation);
+
+      await quotationDetailsRepository.delete({
+        quotationId: quotation.quotationId,
+        businessId: business.businessId,
+      });
+
+      await quotationDetailsRepository.save(
+        dto.details.map((detail) => {
+          const item = itemMap.get(detail.itemId);
+          if (!item) {
+            throw new BadRequestException('Item de cotización inválido');
+          }
+
+          const discount = detail.discount ?? '0.00';
+          if (Number(discount) > detail.quantity * Number(detail.unitPrice)) {
+            throw new BadRequestException(
+              'El descuento no puede superar el subtotal',
+            );
+          }
+
+          return quotationDetailsRepository.create({
+            businessId: business.businessId,
+            quotationId: quotation.quotationId,
+            itemId: item.itemId,
+            quantity: detail.quantity,
+            unitPrice: detail.unitPrice,
+            discount,
+          });
+        }),
+      );
+
+      await this.auditLogsService.createWithManager(manager, {
+        actorUserId: userId,
+        businessId: business.businessId,
+        action: AuditAction.Update,
+        tableName: 'quotations',
+        recordId: quotation.quotationId,
+      });
+
+      return this.mapQuotationSummary(quotation);
+    });
+  }
+
   async convertQuotationToOrder(userId: string, quotationId: string) {
     return this.rlsContextService.runAsUser(userId, async (manager) => {
       const business = await this.getBusinessOrThrow(userId, manager);
@@ -418,6 +518,46 @@ export class SalesService {
           balance: order.payment?.remainingTotal ?? order.quotation.total,
         }))
         .filter((order) => Number(order.balance) > 0);
+    });
+  }
+
+  async updateOrderStatus(
+    userId: string,
+    orderId: string,
+    status: OrderStatus,
+  ) {
+    return this.rlsContextService.runAsUser(userId, async (manager) => {
+      const business = await this.getBusinessOrThrow(userId, manager);
+      const order = await manager.getRepository(OrderEntity).findOne({
+        where: { orderId, businessId: business.businessId },
+        relations: { quotation: { customer: true }, payment: true },
+      });
+
+      if (!order) {
+        throw new NotFoundException('Pedido no encontrado');
+      }
+
+      order.status = status;
+      await manager.getRepository(OrderEntity).save(order);
+
+      await this.auditLogsService.createWithManager(manager, {
+        actorUserId: userId,
+        businessId: business.businessId,
+        action: AuditAction.Update,
+        tableName: 'orders',
+        recordId: order.orderId,
+      });
+
+      return {
+        id: order.orderId,
+        referenceCode: order.referenceCode,
+        type: 'Pedido' as const,
+        status: order.status,
+        customerName: this.buildCustomerName(order.quotation.customer),
+        total: order.quotation.total,
+        remainingTotal: order.payment?.remainingTotal ?? order.quotation.total,
+        createdAt: order.createdAt.toISOString(),
+      };
     });
   }
 

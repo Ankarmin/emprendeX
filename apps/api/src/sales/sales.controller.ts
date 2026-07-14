@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -22,6 +23,7 @@ import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { SKIP_ALL_THROTTLERS } from '../common/throttling/throttler.constants';
 import { CreateQuotationDto } from './dto/create-quotation.dto';
+import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { SalesService } from './sales.service';
 
 @ApiTags('Ventas')
@@ -64,6 +66,20 @@ export class SalesController {
     @Param('quotationId', new ParseUUIDPipe()) quotationId: string,
   ): Promise<void> {
     await this.salesService.removeQuotation(currentUser.id, quotationId);
+  }
+
+  @ApiOperation({
+    summary: 'Actualizar cotización',
+    description: 'Actualiza una cotización existente.',
+  })
+  @ApiResponse({ status: 200, description: 'Cotización actualizada.' })
+  @Patch('cotizaciones/:quotationId')
+  updateQuotation(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('quotationId', new ParseUUIDPipe()) quotationId: string,
+    @Body() dto: CreateQuotationDto,
+  ) {
+    return this.salesService.updateQuotation(currentUser.id, quotationId, dto);
   }
 
   @ApiOperation({
@@ -113,5 +129,23 @@ export class SalesController {
   @Get('pedidos/pendientes')
   listPendingOrders(@CurrentUser() currentUser: AuthenticatedUser) {
     return this.salesService.listPendingOrders(currentUser.id);
+  }
+
+  @ApiOperation({
+    summary: 'Actualizar estado de pedido',
+    description: 'Cambia el estado de un pedido.',
+  })
+  @ApiResponse({ status: 200, description: 'Estado actualizado.' })
+  @Patch('pedidos/:orderId/status')
+  updateOrderStatus(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Param('orderId', new ParseUUIDPipe()) orderId: string,
+    @Body() dto: UpdateOrderStatusDto,
+  ) {
+    return this.salesService.updateOrderStatus(
+      currentUser.id,
+      orderId,
+      dto.status,
+    );
   }
 }
