@@ -73,4 +73,29 @@ export class SubscriptionsService {
 
     return this.usersService.toPublicUser(sessionState);
   }
+
+  async downgradeToBasic(userId: string) {
+    const activeSubscription = await this.subscriptionsRepository.findOne({
+      where: {
+        userId,
+        status: SubscriptionStatus.Active,
+      },
+    });
+
+    if (activeSubscription) {
+      activeSubscription.status = SubscriptionStatus.Inactive;
+      await this.subscriptionsRepository.save(activeSubscription);
+    }
+
+    const sessionState =
+      await this.usersService.ensureDefaultModulesForUser(userId);
+
+    if (!sessionState) {
+      throw new BadRequestException(
+        'No se pudo cargar el estado de la sesión después del downgrade',
+      );
+    }
+
+    return this.usersService.toPublicUser(sessionState);
+  }
 }

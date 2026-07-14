@@ -37,4 +37,16 @@ export class SubscriptionsController {
   upgrade(@CurrentUser() currentUser: AuthenticatedUser) {
     return this.subscriptionsService.upgradeToPro(currentUser.id);
   }
+
+  @ApiOperation({
+    summary: 'Volver a plan Básico',
+    description:
+      'Finaliza la suscripción Pro y restaura los módulos básicos del usuario.',
+  })
+  @ApiResponse({ status: 200, description: 'Downgrade exitoso.' })
+  @Post('downgrade')
+  @HttpCode(HttpStatus.OK)
+  downgrade(@CurrentUser() currentUser: AuthenticatedUser) {
+    return this.subscriptionsService.downgradeToBasic(currentUser.id);
+  }
 }
