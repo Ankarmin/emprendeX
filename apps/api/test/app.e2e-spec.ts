@@ -40,6 +40,9 @@ describe('AppModule (e2e)', () => {
     jest.doMock('../src/calendar/calendar.module', () => ({
       CalendarModule: createEmptyModule(),
     }));
+    jest.doMock('../src/cloudinary/cloudinary.module', () => ({
+      CloudinaryModule: createEmptyModule(),
+    }));
     jest.doMock('../src/customers/customers.module', () => ({
       CustomersModule: createEmptyModule(),
     }));
@@ -51,6 +54,9 @@ describe('AppModule (e2e)', () => {
     }));
     jest.doMock('../src/onboarding/onboarding.module', () => ({
       OnboardingModule: createEmptyModule(),
+    }));
+    jest.doMock('../src/health/health.module', () => ({
+      HealthModule: createEmptyModule(),
     }));
     jest.doMock('../src/plans/plans.module', () => ({
       PlansModule: createEmptyModule(),
@@ -67,6 +73,7 @@ describe('AppModule (e2e)', () => {
       ThrottlerModule: {
         forRoot: jest.fn(() => createEmptyModule()),
       },
+      SkipThrottle: jest.fn(() => jest.fn()),
       minutes: jest.fn((value: number) => value * 60_000),
     }));
     jest.doMock('../src/reports/reports.module', () => ({
@@ -75,8 +82,22 @@ describe('AppModule (e2e)', () => {
     jest.doMock('../src/sales/sales.module', () => ({
       SalesModule: createEmptyModule(),
     }));
+    jest.doMock('../src/subscriptions/subscriptions.module', () => ({
+      SubscriptionsModule: createEmptyModule(),
+    }));
     jest.doMock('../src/users/users.module', () => ({
       UsersModule: createEmptyModule(),
+    }));
+    jest.doMock('@nestjs/config', () => ({
+      ConfigModule: {
+        forRoot: jest.fn(() => createEmptyModule()),
+      },
+    }));
+    jest.doMock('@nestjs/cache-manager', () => ({
+      CacheModule: {
+        register: jest.fn(() => createEmptyModule()),
+      },
+      CacheInterceptor: jest.fn(),
     }));
     jest.doMock('@nestjs/typeorm', () => ({
       InjectRepository: jest.fn(() => jest.fn()),

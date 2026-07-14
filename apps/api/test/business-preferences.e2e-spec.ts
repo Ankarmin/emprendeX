@@ -9,6 +9,7 @@ import { App } from 'supertest/types';
 import { JwtAuthGuard } from '../src/auth/guards/jwt-auth.guard';
 import { BusinessPreferencesController } from '../src/business-preferences/business-preferences.controller';
 import { BusinessPreferencesService } from '../src/business-preferences/business-preferences.service';
+import { CloudinaryService } from '../src/cloudinary/cloudinary.service';
 
 describe('BusinessPreferencesController (e2e)', () => {
   let app: INestApplication<App>;
@@ -43,6 +44,10 @@ describe('BusinessPreferencesController (e2e)', () => {
         {
           provide: BusinessPreferencesService,
           useValue: businessPreferencesService,
+        },
+        {
+          provide: CloudinaryService,
+          useValue: {},
         },
       ],
     })
