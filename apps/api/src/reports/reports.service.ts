@@ -107,6 +107,44 @@ export class ReportsService {
     });
   }
 
+  async getBusinessReports(
+    userId: string,
+    params: {
+      tab: string;
+      fechaInicio: string;
+      fechaFin: string;
+      stockBajoUmbral: number;
+    },
+  ) {
+    return this.rlsContextService.runAsUser(userId, async (manager) => {
+      const business = await this.usersService.findPrimaryBusinessByUserId(
+        userId,
+        manager,
+      );
+
+      if (!business) {
+        return this.getEmptyReportsResponse(params.tab);
+      }
+
+      const [row] = await manager.query<
+        {
+          reports: Record<string, unknown>;
+        }[]
+      >(
+        `SELECT public.get_business_reports($1::uuid, $2::varchar, $3::date, $4::date, $5::integer) AS reports`,
+        [
+          business.businessId,
+          params.tab,
+          params.fechaInicio,
+          params.fechaFin,
+          params.stockBajoUmbral,
+        ],
+      );
+
+      return row?.reports ?? this.getEmptyReportsResponse(params.tab);
+    });
+  }
+
   async getBusinessKpis(userId: string, timezone = 'America/Lima') {
     return this.rlsContextService.runAsUser(userId, async (manager) => {
       const business = await this.usersService.findPrimaryBusinessByUserId(
@@ -183,6 +221,27 @@ export class ReportsService {
         differenceVsYesterday: Number(kpis.clientes_nuevos.diferencia_vs_ayer),
       },
     };
+  }
+
+  private getEmptyReportsResponse(tab: string): Record<string, unknown> {
+    const empty = {
+      metricas: [],
+      ingresos_por_dia: [],
+      ventas_por_categoria: [],
+      top_productos: [],
+    };
+
+    if (tab === 'todos') {
+      return {
+        resumen: empty,
+        inventario: empty,
+        ventas: empty,
+        clientes: empty,
+        financiero: empty,
+      };
+    }
+
+    return { [tab]: empty };
   }
 
   private getEmptyBusinessKpis(timezone: string) {

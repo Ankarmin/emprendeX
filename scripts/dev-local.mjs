@@ -371,7 +371,7 @@ const mobileEnvLocal = resolve(mobileDir, '.env.local');
 
 if (existsSync(mobileEnvExample)) {
   copyFileSync(mobileEnvExample, mobileEnvLocal);
-  console.log(`[env] Restored mobile/.env.local from .env.example`);
+  console.log(`[env] Copied mobile/.env.example -> mobile/.env.local`);
 }
 
 runSync(commands.docker, ['compose', 'down', '--remove-orphans']);

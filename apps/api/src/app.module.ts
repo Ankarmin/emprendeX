@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { CacheModule } from '@nestjs/cache-manager';
 import { ThrottlerGuard, ThrottlerModule, minutes } from '@nestjs/throttler';
 import { AuditLogsModule } from './audit-logs/audit-logs.module';
 import { CalendarModule } from './calendar/calendar.module';
@@ -9,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { BusinessPreferencesModule } from './business-preferences/business-preferences.module';
 import { validateEnvironment } from './config/environment.validation';
 import { RlsModule } from './database/rls/rls.module';
+import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { CustomersModule } from './customers/customers.module';
 import { HealthModule } from './health/health.module';
 import { typeOrmModuleOptions } from './database/typeorm.config';
@@ -25,11 +27,13 @@ import {
 } from './public-catalog/public-catalog.config';
 import { ReportsModule } from './reports/reports.module';
 import { SalesModule } from './sales/sales.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
     RlsModule,
+    CloudinaryModule,
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
@@ -37,6 +41,7 @@ import { UsersModule } from './users/users.module';
       envFilePath: '.env.local',
       validate: validateEnvironment,
     }),
+    CacheModule.register({ isGlobal: true, ttl: 30_000 }),
     ThrottlerModule.forRoot([
       {
         name: 'publicCatalogRead',
@@ -64,6 +69,7 @@ import { UsersModule } from './users/users.module';
     CalendarModule,
     OnboardingModule,
     HealthModule,
+    SubscriptionsModule,
   ],
   controllers: [],
   providers: [
